@@ -125,22 +125,6 @@ function ChatWidgetInner({
 
           {/* Header Actions */}
           <div className="flex items-center gap-2">
-            {/* Theme Toggle */}
-            <motion.button
-              onClick={toggleTheme}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 
-                focus:outline-none focus:ring-2 focus:ring-primary-500
-                transition-colors duration-200"
-              title={`Switch to ${
-                state.theme === 'light' ? 'dark' : state.theme === 'dark' ? 'system' : 'light'
-              } theme`}
-              aria-label="Toggle theme"
-            >
-              {state.theme === 'light' ? '🌙' : state.theme === 'dark' ? '🖥️' : '☀️'}
-            </motion.button>
-
             {/* Clear Chat */}
             {state.messages.length > 0 && (
               <motion.button

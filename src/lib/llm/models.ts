@@ -9,9 +9,9 @@
  */
 
 export enum ClaudeModel {
-  OPUS_4_5 = 'claude-opus-4-5',
-  SONNET_4_5 = 'claude-sonnet-4-5',
-  HAIKU_4_5 = 'claude-haiku-4-5',
+  OPUS_4_5 = 'claude-sonnet-4-5-20250514',
+  SONNET_4_5 = 'claude-sonnet-4-5-20250514',
+  HAIKU_4_5 = 'claude-haiku-4-5-20250514',
 }
 
 /**
@@ -84,10 +84,7 @@ export const MODEL_CONFIGS: Record<ClaudeModel, ModelConfig> = {
  * Get the default model from environment or use SONNET_4_5
  */
 export function getDefaultModel(): ClaudeModel {
-  const modelEnv = process.env.LLM_MODEL;
-  if (modelEnv === 'claude-opus-4-5') return ClaudeModel.OPUS_4_5;
-  if (modelEnv === 'claude-haiku-4-5') return ClaudeModel.HAIKU_4_5;
-  return ClaudeModel.HAIKU_4_5; // Default
+  return ClaudeModel.HAIKU_4_5;
 }
 
 export const DEFAULT_MODEL = getDefaultModel();

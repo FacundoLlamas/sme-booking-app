@@ -60,7 +60,7 @@ async function createMockMessage(
   await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
   // Generate mock response
-  const content = generateMockResponse(prompt);
+  const content = await generateMockResponse(prompt);
 
   // Estimate tokens
   const inputText = (system || '') + prompt;
@@ -90,8 +90,8 @@ async function createRealMessage(
 
   try {
     // Lazy load Anthropic SDK
-    const Anthropic = await import('@anthropic-ai/sdk');
-    const client = new Anthropic.default({
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 

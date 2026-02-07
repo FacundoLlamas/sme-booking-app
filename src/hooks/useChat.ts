@@ -34,7 +34,7 @@ export function useChat(options: UseChatOptions = {}) {
     persistChat = true,
   } = options;
 
-  const { state, addMessage, setLoading, setError, setClassification, setSessionId } =
+  const { state, addMessage, setLoading, setError, setClassification, setSessionId, clearChat: clearChatContext } =
     useChatContext();
   const { saveMessages, loadMessages, clearStorage } = useChatStorage();
 
@@ -337,6 +337,7 @@ export function useChat(options: UseChatOptions = {}) {
     loadPersistedMessages,
     clearChat: () => {
       clearStorage();
+      clearChatContext();
     },
   };
 }
