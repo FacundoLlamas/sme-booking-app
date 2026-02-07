@@ -150,8 +150,8 @@ export async function POST(request: NextRequest) {
         error: errorMsg,
       });
 
-      // Fallback response (includes error for debugging)
-      aiResponse = `[Error: ${errorMsg}] Evios HQ can help with plumbing, electrical, HVAC, maintenance, and landscaping. Click Book a Service to get started.`;
+      // Fallback response
+      aiResponse = "Welcome to Evios HQ! I can help you with plumbing, electrical, HVAC, general maintenance, and landscaping services. How can I assist you today? To book a service, click \"Book a Service\" in the navigation.";
     }
 
     // Save assistant message to database
