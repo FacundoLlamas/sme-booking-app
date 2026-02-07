@@ -2,32 +2,31 @@
  * Chat Message API Endpoint
  * POST /api/v1/chat
  *
- * Handles customer chat messages for service booking assistance.
- * - Stores conversation and messages in database
- * - Classifies messages using LLM
- * - Returns structured response with service type, urgency, and next steps
+ * Conversational booking assistant powered by Claude tool use.
+ * - Loads conversation history from database
+ * - Sends full history + tools to Claude
+ * - Executes tools server-side (check_availability, create_booking)
+ * - Returns final text response to frontend
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { createMessage } from '@/lib/llm/client';
+import {
+  createConversationMessage,
+  ConversationMessage,
+  ContentBlock,
+} from '@/lib/llm/client';
 import { prisma } from '@/lib/db/prisma';
-import { formatNextSteps } from '@/lib/response-generator/formatting';
 import { checkRateLimits } from '@/lib/middleware/rate-limit';
-import { getEvosChatSystemPrompt } from '@/lib/classification/system-prompt';
+import { getEviosBookingSystemPrompt } from '@/lib/classification/system-prompt';
+import { BOOKING_TOOLS, executeTool } from '@/lib/llm/tools';
 
-/**
- * Generate a unique ID (simple implementation without uuid package)
- */
 function generateId(): string {
   return `id_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 }
 
-/**
- * Chat message request schema
- */
 const ChatMessageRequestSchema = z.object({
   message: z
     .string()
@@ -38,50 +37,33 @@ const ChatMessageRequestSchema = z.object({
   business_id: z.number().int().positive().optional(),
 });
 
-type ChatMessageRequest = z.infer<typeof ChatMessageRequestSchema>;
-
-/**
- * Response data structure
- */
-interface ChatMessageResponse {
-  id: number;
-  conversation_id: number;
-  message_id: number;
-  response: string;
-  service_type: string;
-  urgency: 'low' | 'medium' | 'high' | 'emergency';
-  confidence: number;
-  next_steps: string[];
-  timestamp: string;
-}
+const MAX_TOOL_ITERATIONS = 5;
+const MAX_HISTORY_MESSAGES = 20;
 
 /**
  * POST /api/v1/chat - Handle incoming chat message
  */
 export async function POST(request: NextRequest) {
-  const correlationId = request.headers.get('x-correlation-id') || generateId();
+  const correlationId =
+    request.headers.get('x-correlation-id') || generateId();
   const startTime = Date.now();
 
   try {
-    // Parse and validate request body
     const body = await request.json();
     const validated = ChatMessageRequestSchema.parse(body);
 
-    // Check rate limits (IP-based and customer_id-based)
-    const rateLimitCheck = await checkRateLimits(request, validated.customer_id);
+    // Rate limiting
+    const rateLimitCheck = await checkRateLimits(
+      request,
+      validated.customer_id
+    );
     if (!rateLimitCheck.allowed) {
       return rateLimitCheck.response!;
     }
 
-    logger.info('[CHAT API] Incoming message', {
-      correlationId,
-      customerId: validated.customer_id,
-      messageLength: validated.message.length,
-      hasSession: !!validated.session_id,
-    });
-
-    // Generate session ID if not provided
-    const sessionId = validated.session_id || `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const sessionId =
+      validated.session_id ||
+      `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     // Find or create conversation
     let conversation = await prisma.conversation.findUnique({
@@ -95,18 +77,12 @@ export async function POST(request: NextRequest) {
           customerId: validated.customer_id || null,
           businessId: validated.business_id || null,
           status: 'active',
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
-      });
-
-      logger.info('[CHAT API] Created new conversation', {
-        correlationId,
-        conversationId: conversation.id,
-        sessionId,
       });
     }
 
-    // Save user message to database
+    // Save user message to DB
     const userMessage = await prisma.message.create({
       data: {
         conversationId: conversation.id,
@@ -115,78 +91,47 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    logger.info('[CHAT API] Saved user message', {
-      correlationId,
-      messageId: userMessage.id,
-      conversationId: conversation.id,
+    // Load conversation history
+    const dbMessages = await prisma.message.findMany({
+      where: { conversationId: conversation.id },
+      orderBy: { createdAt: 'asc' },
+      take: MAX_HISTORY_MESSAGES,
     });
 
-    // Generate conversational response using Claude
+    const claudeMessages: ConversationMessage[] = dbMessages.map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    logger.info('[CHAT API] Processing message', {
+      correlationId,
+      conversationId: conversation.id,
+      historyLength: claudeMessages.length,
+    });
+
+    // Run tool loop to get AI response
     let aiResponse: string;
-    let classification = {
-      service_type: 'general',
-      urgency: 'medium' as const,
-      confidence: 0.5,
-    };
-
     try {
-      const llmResponse = await createMessage({
-        prompt: validated.message,
-        system: getEvosChatSystemPrompt(),
-        maxTokens: 512,
-      });
-      aiResponse = llmResponse.content;
-
-      logger.info('[CHAT API] LLM response generated', {
-        correlationId,
-        model: llmResponse.model,
-        inputTokens: llmResponse.tokens.input,
-        outputTokens: llmResponse.tokens.output,
-      });
+      aiResponse = await runToolLoop(claudeMessages, correlationId);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      logger.error('[CHAT API] LLM response failed', {
+      const errorMsg =
+        error instanceof Error ? error.message : String(error);
+      logger.error('[CHAT API] Tool loop failed', {
         correlationId,
         error: errorMsg,
       });
-
-      // Fallback response
-      aiResponse = "Welcome to Evios HQ! I can help you with plumbing, electrical, HVAC, general maintenance, and landscaping services. How can I assist you today? To book a service, click \"Book a Service\" in the navigation.";
+      aiResponse =
+        "Sorry, I'm having trouble right now. You can book directly on our booking page, or try again in a moment.";
     }
 
-    // Save assistant message to database
+    // Save assistant response to DB
     const assistantMessage = await prisma.message.create({
       data: {
         conversationId: conversation.id,
         role: 'assistant',
         content: aiResponse,
-        classification: JSON.stringify(classification),
       },
     });
-
-    logger.info('[CHAT API] Saved assistant message', {
-      correlationId,
-      messageId: assistantMessage.id,
-    });
-
-    // Generate next steps
-    const nextSteps = formatNextSteps(
-      classification.service_type,
-      classification.urgency
-    );
-
-    // Return structured response
-    const response: ChatMessageResponse = {
-      id: assistantMessage.id,
-      conversation_id: conversation.id,
-      message_id: userMessage.id,
-      response: aiResponse,
-      service_type: classification.service_type,
-      urgency: classification.urgency,
-      confidence: classification.confidence,
-      next_steps: nextSteps,
-      timestamp: new Date().toISOString(),
-    };
 
     const duration = Date.now() - startTime;
     logger.info('[CHAT API] Response sent', {
@@ -195,7 +140,13 @@ export async function POST(request: NextRequest) {
       conversationId: conversation.id,
     });
 
-    return apiSuccess(response);
+    return apiSuccess({
+      id: assistantMessage.id,
+      conversation_id: conversation.id,
+      message_id: userMessage.id,
+      response: aiResponse,
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
     const duration = Date.now() - startTime;
 
@@ -231,4 +182,91 @@ export async function POST(request: NextRequest) {
 
     return apiError('INTERNAL_ERROR', 'An unknown error occurred', 500);
   }
+}
+
+/**
+ * Run the tool execution loop
+ * Sends messages to Claude, executes any tool calls, repeats until text response
+ */
+async function runToolLoop(
+  messages: ConversationMessage[],
+  correlationId: string
+): Promise<string> {
+  let currentMessages = [...messages];
+  let iterations = 0;
+
+  while (iterations < MAX_TOOL_ITERATIONS) {
+    iterations++;
+
+    const response = await createConversationMessage({
+      messages: currentMessages,
+      system: getEviosBookingSystemPrompt(),
+      tools: BOOKING_TOOLS,
+      maxTokens: 1024,
+    });
+
+    logger.info('[CHAT API] Claude response', {
+      correlationId,
+      stopReason: response.stop_reason,
+      iteration: iterations,
+      inputTokens: response.tokens.input,
+      outputTokens: response.tokens.output,
+    });
+
+    // If end_turn, extract text and return
+    if (
+      response.stop_reason === 'end_turn' ||
+      response.stop_reason === 'max_tokens'
+    ) {
+      const textBlock = response.content.find((b) => b.type === 'text');
+      return (
+        textBlock?.text ||
+        "I'm here to help you book a service. What do you need?"
+      );
+    }
+
+    // If tool_use, execute tools and loop
+    if (response.stop_reason === 'tool_use') {
+      // Add Claude's response (with tool_use blocks) to messages
+      currentMessages.push({
+        role: 'assistant',
+        content: response.content,
+      });
+
+      // Execute each tool and collect results
+      const toolResultBlocks: ContentBlock[] = [];
+
+      for (const block of response.content) {
+        if (block.type === 'tool_use' && block.name && block.id) {
+          logger.info('[CHAT API] Executing tool', {
+            correlationId,
+            tool: block.name,
+            input: block.input,
+          });
+
+          const { result, isError } = await executeTool(
+            block.name,
+            block.input || {}
+          );
+
+          toolResultBlocks.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: result,
+            is_error: isError,
+          });
+        }
+      }
+
+      // Add tool results as user message (Anthropic API spec)
+      currentMessages.push({
+        role: 'user',
+        content: toolResultBlocks,
+      });
+    }
+  }
+
+  // Safety fallback
+  logger.warn('[CHAT API] Max tool iterations reached', { correlationId });
+  return "I ran into an issue. Could you try rephrasing your request?";
 }

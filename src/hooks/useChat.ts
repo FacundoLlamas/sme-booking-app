@@ -114,14 +114,16 @@ export function useChat(options: UseChatOptions = {}) {
         };
         addMessage(assistantMessage);
 
-        // Store classification
-        const classification: ServiceClassification = {
-          service_type: data.data.service_type,
-          urgency: data.data.urgency,
-          confidence: data.data.confidence,
-          estimated_duration_minutes: data.data.estimated_duration_minutes,
-        };
-        setClassification(classification);
+        // Store classification if present
+        if (data.data.service_type) {
+          const classification: ServiceClassification = {
+            service_type: data.data.service_type,
+            urgency: data.data.urgency || 'medium',
+            confidence: data.data.confidence || 0.5,
+            estimated_duration_minutes: data.data.estimated_duration_minutes,
+          };
+          setClassification(classification);
+        }
 
         // Persist messages if enabled
         if (persistChat) {

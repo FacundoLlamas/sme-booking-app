@@ -147,3 +147,135 @@ export function parseJSONResponse<T = any>(response: CreateMessageResponse): T {
  * Export classification helper for convenience
  */
 export { classifyServiceRequest } from './__mocks__/mock-claude';
+
+// ─── Conversation + Tool Use Support ────────────────────────────────
+
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string | ContentBlock[];
+}
+
+export interface ContentBlock {
+  type: 'text' | 'tool_use' | 'tool_result';
+  text?: string;
+  id?: string;
+  name?: string;
+  input?: Record<string, any>;
+  tool_use_id?: string;
+  content?: string;
+  is_error?: boolean;
+}
+
+export interface CreateConversationParams {
+  messages: ConversationMessage[];
+  system?: string;
+  tools?: any[];
+  model?: ClaudeModel;
+  maxTokens?: number;
+}
+
+export interface CreateConversationResponse {
+  content: ContentBlock[];
+  stop_reason: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence';
+  tokens: { input: number; output: number };
+  model: string;
+  id: string;
+}
+
+/**
+ * Create a conversation message with tool support (real or mock)
+ */
+export async function createConversationMessage(
+  params: CreateConversationParams
+): Promise<CreateConversationResponse> {
+  if (shouldUseMock()) {
+    return createMockConversationMessage(params);
+  }
+  return createRealConversationMessage(params);
+}
+
+/**
+ * Mock conversation message (no tool use, just text)
+ */
+async function createMockConversationMessage(
+  params: CreateConversationParams
+): Promise<CreateConversationResponse> {
+  const { messages, model = DEFAULT_MODEL } = params;
+
+  await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
+
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+  const userText =
+    typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : 'hello';
+
+  const content = await generateMockResponse(userText);
+
+  return {
+    content: [{ type: 'text', text: content }],
+    stop_reason: 'end_turn',
+    tokens: {
+      input: estimateTokens(JSON.stringify(messages)),
+      output: estimateTokens(content),
+    },
+    model,
+    id: `mock_msg_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+  };
+}
+
+/**
+ * Real conversation message with Anthropic SDK (supports tools)
+ */
+async function createRealConversationMessage(
+  params: CreateConversationParams
+): Promise<CreateConversationResponse> {
+  const { messages, system, tools, model = DEFAULT_MODEL, maxTokens = 1024 } = params;
+
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const key = process.env.ANTHROPIC_API_KEY || '';
+  const isOAuthToken = key.startsWith('sk-ant-oat');
+  const client = new Anthropic(
+    isOAuthToken
+      ? { authToken: key, apiKey: null as any }
+      : { apiKey: key }
+  );
+
+  const apiParams: any = {
+    model,
+    max_tokens: maxTokens,
+    messages: messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  };
+
+  if (system) apiParams.system = system;
+  if (tools && tools.length > 0) apiParams.tools = tools;
+
+  const response = await client.messages.create(apiParams);
+
+  const contentBlocks: ContentBlock[] = response.content.map((block: any) => {
+    if (block.type === 'text') {
+      return { type: 'text' as const, text: block.text };
+    }
+    if (block.type === 'tool_use') {
+      return {
+        type: 'tool_use' as const,
+        id: block.id,
+        name: block.name,
+        input: block.input,
+      };
+    }
+    return block;
+  });
+
+  return {
+    content: contentBlocks,
+    stop_reason: response.stop_reason as CreateConversationResponse['stop_reason'],
+    tokens: {
+      input: response.usage.input_tokens,
+      output: response.usage.output_tokens,
+    },
+    model: response.model,
+    id: response.id,
+  };
+}
