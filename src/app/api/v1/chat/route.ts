@@ -12,10 +12,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { classifyServiceRequest } from '@/lib/llm/client';
+import { createMessage } from '@/lib/llm/client';
 import { prisma } from '@/lib/db/prisma';
-import { formatChatResponse, formatNextSteps } from '@/lib/response-generator/formatting';
+import { formatNextSteps } from '@/lib/response-generator/formatting';
 import { checkRateLimits } from '@/lib/middleware/rate-limit';
+import { getEvosChatSystemPrompt } from '@/lib/classification/system-prompt';
 
 /**
  * Generate a unique ID (simple implementation without uuid package)
@@ -120,35 +121,39 @@ export async function POST(request: NextRequest) {
       conversationId: conversation.id,
     });
 
-    // Classify the service request using LLM
-    let classification;
+    // Generate conversational response using Claude
+    let aiResponse: string;
+    let classification = {
+      service_type: 'general',
+      urgency: 'medium' as const,
+      confidence: 0.5,
+    };
+
     try {
-      classification = await classifyServiceRequest(validated.message);
+      const llmResponse = await createMessage({
+        prompt: validated.message,
+        system: getEvosChatSystemPrompt(),
+        maxTokens: 512,
+      });
+      aiResponse = llmResponse.content;
+
+      logger.info('[CHAT API] LLM response generated', {
+        correlationId,
+        model: llmResponse.model,
+        inputTokens: llmResponse.tokens.input,
+        outputTokens: llmResponse.tokens.output,
+      });
     } catch (error) {
-      logger.error('[CHAT API] Classification failed', {
+      logger.error('[CHAT API] LLM response failed', {
         correlationId,
         error: String(error),
       });
 
-      // Return fallback response if classification fails
-      classification = {
-        service_type: 'general_maintenance',
-        urgency: 'medium' as const,
-        confidence: 0.3,
-        reasoning: 'Could not classify - please provide more details',
-        estimated_duration_minutes: 90,
-      };
+      // Fallback response
+      aiResponse = "Welcome to Evios HQ! I can help you with plumbing, electrical, HVAC, general maintenance, and landscaping services. How can I assist you today? To book a service, click \"Book a Service\" in the navigation.";
     }
 
-    // Generate AI response based on classification
-    const aiResponse = formatChatResponse({
-      service_type: classification.service_type,
-      urgency: classification.urgency as 'low' | 'medium' | 'high' | 'emergency',
-      confidence: classification.confidence,
-      estimated_duration_minutes: classification.estimated_duration_minutes,
-    });
-
-    // Save assistant message to database with classification
+    // Save assistant message to database
     const assistantMessage = await prisma.message.create({
       data: {
         conversationId: conversation.id,
@@ -161,20 +166,9 @@ export async function POST(request: NextRequest) {
     logger.info('[CHAT API] Saved assistant message', {
       correlationId,
       messageId: assistantMessage.id,
-      serviceType: classification.service_type,
-      urgency: classification.urgency,
-      confidence: classification.confidence.toFixed(2),
     });
 
-    // Update conversation classification for context
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: {
-        classification: JSON.stringify(classification),
-      },
-    });
-
-    // Generate next steps based on classification
+    // Generate next steps
     const nextSteps = formatNextSteps(
       classification.service_type,
       classification.urgency
@@ -188,7 +182,7 @@ export async function POST(request: NextRequest) {
       response: aiResponse,
       service_type: classification.service_type,
       urgency: classification.urgency,
-      confidence: parseFloat(classification.confidence.toFixed(2)),
+      confidence: classification.confidence,
       next_steps: nextSteps,
       timestamp: new Date().toISOString(),
     };

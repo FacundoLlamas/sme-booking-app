@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import ChatWrapper from '@/components/chat/ChatWrapper';
 
 export const metadata: Metadata = {
-  title: 'SME Booking App',
-  description: 'AI-powered appointment scheduling system for SMEs',
+  title: 'Evios HQ - Service Booking',
+  description: 'AI-powered appointment scheduling for expert services by Evios HQ',
   viewport: 'width=device-width, initial-scale=1',
 };
 
@@ -14,7 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ChatWrapper />
+      </body>
     </html>
   );
 }

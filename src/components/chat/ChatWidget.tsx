@@ -116,12 +116,10 @@ function ChatWidgetInner({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Service Assistant
+              Evios HQ
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {state.service_classification
-                ? `${state.service_classification.service_type} • ${state.service_classification.urgency}`
-                : 'Ask us anything about your service needs'}
+              How can we help you today?
             </p>
           </div>
 
@@ -200,7 +198,7 @@ function ChatWidgetInner({
         onSendMessage={sendMessage}
         onSendStreaming={sendStreamingMessage}
         disabled={state.loading}
-        placeholder="Describe your issue..."
+        placeholder="Ask about our services..."
       />
     </motion.div>
   );

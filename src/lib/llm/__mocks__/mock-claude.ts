@@ -238,21 +238,35 @@ export async function classifyServiceRequest(prompt: string): Promise<ServiceCla
 
 /**
  * Generate a mock Claude response for any prompt
+ * Returns a conversational Evios HQ-style response
  */
 export async function generateMockResponse(prompt: string): Promise<string> {
   return mockOrchestrator.withOrchestratedMock('llm', async () => {
     const classification = classifyServiceRequestInternal(prompt);
 
-  const response = {
-    service_type: classification.service_type,
-    urgency: classification.urgency,
-    confidence: classification.confidence,
-    reasoning: classification.reasoning,
-    estimated_duration_minutes: classification.estimated_duration_minutes,
-    analysis: `Based on the description "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}", I've classified this as a ${classification.service_type} request with ${classification.urgency} urgency.`,
-  };
+    if (classification.confidence < 0.5) {
+      return "Welcome to Evios HQ! I can help you with plumbing, electrical, HVAC, general maintenance, and landscaping services. What do you need help with today?";
+    }
 
-  return JSON.stringify(response, null, 2);
+    const serviceNames: Record<string, string> = {
+      plumbing: 'plumbing',
+      electrical: 'electrical',
+      hvac: 'HVAC',
+      painting: 'painting',
+      locksmith: 'locksmith',
+      glazier: 'glazier',
+      roofing: 'roofing',
+      cleaning: 'cleaning',
+      pest_control: 'pest control',
+      appliance_repair: 'appliance repair',
+      garage_door: 'garage door',
+      handyman: 'handyman',
+      general_maintenance: 'general maintenance',
+    };
+
+    const serviceName = serviceNames[classification.service_type] || classification.service_type;
+
+    return `It sounds like you need ${serviceName} service! At Evios HQ, we have experienced professionals ready to help. To get started, click "Book a Service" and select ${serviceName} as your service type. You can pick a time that works for you and we'll take care of the rest!`;
   });
 }
 

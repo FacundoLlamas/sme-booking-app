@@ -56,7 +56,11 @@ const events: Map<string, CalendarEvent> = new Map();
 
 // Load persisted events on startup if persistence is enabled
 if (PERSIST_EVENTS) {
-  loadPersistedEvents();
+  try {
+    loadPersistedEvents();
+  } catch {
+    // Ignore if filesystem is not available
+  }
 }
 
 // Path to calendar mock data file
@@ -117,18 +121,23 @@ function persistEvents(): void {
 
 /**
  * Ensure the data file exists
+ * Silently fails on read-only filesystems (e.g., Vercel)
  */
 function ensureCalendarFile(): void {
-  const dir = path.dirname(CALENDAR_FILE_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (!fs.existsSync(CALENDAR_FILE_PATH)) {
-    const initialData: CalendarData = {
-      availability: [],
-      last_updated: new Date().toISOString(),
-    };
-    fs.writeFileSync(CALENDAR_FILE_PATH, JSON.stringify(initialData, null, 2), 'utf8');
+  try {
+    const dir = path.dirname(CALENDAR_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    if (!fs.existsSync(CALENDAR_FILE_PATH)) {
+      const initialData: CalendarData = {
+        availability: [],
+        last_updated: new Date().toISOString(),
+      };
+      fs.writeFileSync(CALENDAR_FILE_PATH, JSON.stringify(initialData, null, 2), 'utf8');
+    }
+  } catch {
+    // Ignore filesystem errors on read-only environments
   }
 }
 
@@ -230,12 +239,16 @@ export function getAvailabilityForDate(
   // Generate new availability
   const slots = generateMockAvailability(date, businessTimezone, serviceType);
 
-  // Save to file
-  data.availability.push({
-    date,
-    slots,
-  });
-  writeCalendarData(data);
+  // Save to file (may fail on read-only filesystems like Vercel)
+  try {
+    data.availability.push({
+      date,
+      slots,
+    });
+    writeCalendarData(data);
+  } catch {
+    // Ignore write errors - slots are still returned from memory
+  }
 
   return slots;
 }
