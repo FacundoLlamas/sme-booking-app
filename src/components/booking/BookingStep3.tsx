@@ -30,29 +30,52 @@ export default function BookingStep3({ form, isLoading }: BookingStep3Props) {
     setSlotsLoading(true);
     setSlotsError(null);
 
-    fetch('/api/v1/availability', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service_type: serviceType,
-        date_range: {
-          start: new Date().toISOString().split('T')[0],
-          end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        }
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0];
+    const endDateObj = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const endDate = endDateObj.toISOString().split('T')[0];
+
+    const params = new URLSearchParams({
+      service_type: serviceType,
+      date: startDate,
+      end_date: endDate,
+    });
+
+    fetch(`/api/v1/availability?${params.toString()}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
-    })
-      .then(res => res.json())
       .then(data => {
-        if (data.data && Array.isArray(data.data)) {
-          // Transform slots
-          const transformedSlots = data.data.map((slot: any) => ({
-            time: new Date(slot.time),
-            expert_id: slot.expert_id,
-            expert_name: slot.expert_name,
-            available: slot.available !== false
-          }));
-          setSlots(transformedSlots);
+        const transformedSlots: AvailableTimeSlot[] = [];
+
+        if (data.results && Array.isArray(data.results)) {
+          // Range response: { results: [{ date, available_slots: [{start, end, expert_id}] }] }
+          for (const dayResult of data.results) {
+            if (dayResult.available_slots && Array.isArray(dayResult.available_slots)) {
+              for (const slot of dayResult.available_slots) {
+                transformedSlots.push({
+                  time: new Date(slot.start),
+                  expert_id: slot.expert_id ? parseInt(slot.expert_id) : 0,
+                  expert_name: slot.expert_id ? `Technician ${slot.expert_id}` : '',
+                  available: true,
+                });
+              }
+            }
+          }
+        } else if (data.available_slots && Array.isArray(data.available_slots)) {
+          // Single day response: { available_slots: [{start, end, expert_id}] }
+          for (const slot of data.available_slots) {
+            transformedSlots.push({
+              time: new Date(slot.start),
+              expert_id: slot.expert_id ? parseInt(slot.expert_id) : 0,
+              expert_name: slot.expert_id ? `Technician ${slot.expert_id}` : '',
+              available: true,
+            });
+          }
         }
+
+        setSlots(transformedSlots);
       })
       .catch(error => {
         setSlotsError('Failed to load available times. Please try again.');
@@ -99,7 +122,7 @@ export default function BookingStep3({ form, isLoading }: BookingStep3Props) {
     <div className="space-y-6">
       {slotsLoading && (
         <div className="p-4 bg-blue-50 rounded-lg dark:bg-blue-900/20">
-          <p className="text-sm text-blue-700 dark:text-blue-400">⏳ Loading available times...</p>
+          <p className="text-sm text-blue-700 dark:text-blue-400">Loading available times...</p>
         </div>
       )}
 
@@ -140,7 +163,7 @@ export default function BookingStep3({ form, isLoading }: BookingStep3Props) {
                       ${
                         selectedDate === dateStr
                           ? 'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-400'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300'
                       }
                     `}
                   >
@@ -176,7 +199,7 @@ export default function BookingStep3({ form, isLoading }: BookingStep3Props) {
                             ? 'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-400'
                             : !slot.available
                             ? 'border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300'
                         }
                       `}
                     >
@@ -208,7 +231,7 @@ export default function BookingStep3({ form, isLoading }: BookingStep3Props) {
           {/* Info Box */}
           <div className="p-4 bg-blue-50 rounded-lg dark:bg-blue-900/20">
             <p className="text-sm text-blue-700 dark:text-blue-400">
-              ℹ️ Times are shown in your local timezone. You'll receive a confirmation and reminder.
+              Times are shown in your local timezone. You'll receive a confirmation and reminder.
             </p>
           </div>
         </>
