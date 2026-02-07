@@ -95,7 +95,7 @@ async function createRealMessage(
     const isOAuthToken = key.startsWith('sk-ant-oat');
     const client = new Anthropic(
       isOAuthToken
-        ? { authToken: key }
+        ? { authToken: key, apiKey: null as any }
         : { apiKey: key }
     );
 
