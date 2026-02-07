@@ -91,9 +91,13 @@ async function createRealMessage(
   try {
     // Lazy load Anthropic SDK
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    const key = process.env.ANTHROPIC_API_KEY || '';
+    const isOAuthToken = key.startsWith('sk-ant-oat');
+    const client = new Anthropic(
+      isOAuthToken
+        ? { authToken: key }
+        : { apiKey: key }
+    );
 
     const message = await client.messages.create({
       model: model,
