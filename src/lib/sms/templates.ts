@@ -14,7 +14,7 @@ export function confirmationSMS(
   bookingCode: string,
   date: string,
   time: string,
-  businessName: string = 'SME Services'
+  businessName: string = 'Evios HQ'
 ): string {
   return `Your booking is confirmed! 
 Booking Code: ${bookingCode}
@@ -33,7 +33,7 @@ export function confirmationSMSTemplate(
   date: string,
   time: string,
   serviceType: string,
-  businessName: string = 'SME Services'
+  businessName: string = 'Evios HQ'
 ): string {
   return `Hi ${customerName}! Your booking is confirmed. 📅
 
@@ -52,7 +52,7 @@ Reply CANCEL to reschedule.`;
 export function reminderSMS_24h(
   date: string,
   time: string,
-  businessName: string = 'SME Services',
+  businessName: string = 'Evios HQ',
   businessPhone?: string
 ): string {
   const contactInfo = businessPhone ? `\nQuestions? Call ${businessPhone}` : '';
@@ -71,7 +71,7 @@ export function reminderSMSTemplate_24h(
   date: string,
   time: string,
   serviceType?: string,
-  businessName: string = 'SME Services'
+  businessName: string = 'Evios HQ'
 ): string {
   return `Hi ${customerName}! Reminder: Your ${serviceType || 'service'} appointment is tomorrow.
 
@@ -88,7 +88,7 @@ See you then!`;
 export function reminderSMS_2h(
   time: string,
   address?: string,
-  businessName: string = 'SME Services'
+  businessName: string = 'Evios HQ'
 ): string {
   const locationInfo = address ? `\nLocation: ${address}` : '';
   return `Reminder: Your appointment is in 2 hours!
@@ -105,7 +105,7 @@ export function reminderSMSTemplate_2h(
   customerName: string,
   time: string,
   serviceType?: string,
-  businessName: string = 'SME Services'
+  businessName: string = 'Evios HQ'
 ): string {
   return `Hi ${customerName}! Your ${serviceType || 'service'} appointment is in 2 hours.
 
@@ -120,7 +120,7 @@ We're ready for you!`;
  */
 export function cancellationSMS(
   bookingCode: string,
-  businessName: string = 'SME Services',
+  businessName: string = 'Evios HQ',
   businessPhone?: string
 ): string {
   const rebookInfo = businessPhone ? `\nTo rebook, call ${businessPhone}` : '';
@@ -139,7 +139,7 @@ export function rescheduleSMS(
   oldTime: string,
   newDate: string,
   newTime: string,
-  businessName: string = 'SME Services'
+  businessName: string = 'Evios HQ'
 ): string {
   return `Your appointment has been rescheduled.
 Booking Code: ${bookingCode}
@@ -168,7 +168,7 @@ Estimated arrival: ${estimatedArrival}${contactInfo}`;
  */
 export function serviceCompletedSMS(
   bookingCode: string,
-  businessName: string = 'SME Services',
+  businessName: string = 'Evios HQ',
   feedbackLink?: string
 ): string {
   const feedbackInfo = feedbackLink

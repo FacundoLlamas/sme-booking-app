@@ -90,10 +90,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">B</span>
+              <span className="text-white font-bold">E</span>
             </div>
             <span className="font-bold text-slate-900 dark:text-white">
-              BookPro
+              Evios HQ
             </span>
           </div>
           <button
@@ -118,10 +118,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="flex items-center gap-2 h-16 px-4 border-b border-slate-200 dark:border-slate-700">
           <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">B</span>
+            <span className="text-white font-bold">E</span>
           </div>
           <span className="font-bold text-slate-900 dark:text-white">
-            BookPro
+            Evios HQ
           </span>
         </div>
 

@@ -13,7 +13,7 @@ function baseEmailTemplate(content: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SME Services</title>
+  <title>Evios HQ</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -154,10 +154,10 @@ export function confirmationEmail(
       <p><strong>Need to make changes?</strong><br>
       Call us at <a href="tel:${businessPhone}">${businessPhone}</a></p>
       
-      <p>Thank you for choosing SME Services!</p>
+      <p>Thank you for choosing Evios HQ!</p>
     </div>
     <div class="footer">
-      <p>SME Services - Professional Service Bookings</p>
+      <p>Evios HQ - Professional Service Bookings</p>
       <p><a href="tel:${businessPhone}">${businessPhone}</a></p>
       <div class="footer-links">
         <a href="{{unsubscribe_url}}">Unsubscribe</a> | 
@@ -203,7 +203,7 @@ export function reminderEmail_24h(
       <p>See you soon!</p>
     </div>
     <div class="footer">
-      <p>SME Services - Professional Service Bookings</p>
+      <p>Evios HQ - Professional Service Bookings</p>
       ${businessPhone ? `<p><a href="tel:${businessPhone}">${businessPhone}</a></p>` : ''}
       <div class="footer-links">
         <a href="{{unsubscribe_url}}">Unsubscribe</a> | 
@@ -246,7 +246,7 @@ export function reminderEmail_2h(
       <p>We're looking forward to serving you!</p>
     </div>
     <div class="footer">
-      <p>SME Services - Professional Service Bookings</p>
+      <p>Evios HQ - Professional Service Bookings</p>
       <div class="footer-links">
         <a href="{{unsubscribe_url}}">Unsubscribe</a> | 
         <a href="{{preferences_url}}">Email Preferences</a>
@@ -290,7 +290,7 @@ export function cancellationEmail(
       <p>We hope to see you again soon!</p>
     </div>
     <div class="footer">
-      <p>SME Services - Professional Service Bookings</p>
+      <p>Evios HQ - Professional Service Bookings</p>
       ${businessPhone ? `<p><a href="tel:${businessPhone}">${businessPhone}</a></p>` : ''}
       <div class="footer-links">
         <a href="{{unsubscribe_url}}">Unsubscribe</a> | 
@@ -336,7 +336,7 @@ export function rescheduleEmail(
       <p>Thank you for your flexibility!</p>
     </div>
     <div class="footer">
-      <p>SME Services - Professional Service Bookings</p>
+      <p>Evios HQ - Professional Service Bookings</p>
       <div class="footer-links">
         <a href="{{unsubscribe_url}}">Unsubscribe</a> | 
         <a href="{{preferences_url}}">Email Preferences</a>
@@ -365,7 +365,7 @@ export function serviceCompletedEmail(
     </div>
     <div class="content">
       <p>Hi ${customerName},</p>
-      <p>Thank you for choosing SME Services! Your service has been completed.</p>
+      <p>Thank you for choosing Evios HQ! Your service has been completed.</p>
       
       <div class="booking-card">
         <div class="booking-detail"><strong>Booking Code:</strong> ${bookingCode}</div>
@@ -383,7 +383,7 @@ export function serviceCompletedEmail(
       <p>We look forward to serving you again!</p>
     </div>
     <div class="footer">
-      <p>SME Services - Professional Service Bookings</p>
+      <p>Evios HQ - Professional Service Bookings</p>
       <div class="footer-links">
         <a href="{{unsubscribe_url}}">Unsubscribe</a> | 
         <a href="{{preferences_url}}">Email Preferences</a>

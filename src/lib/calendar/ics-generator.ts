@@ -37,7 +37,7 @@ function formatIcsDate(date: Date): string {
  * Generate unique UID for ICS event
  */
 function generateEventUid(bookingId: number, confirmationCode: string): string {
-  return `booking-${bookingId}-${confirmationCode}@sme-booking-app`;
+  return `booking-${bookingId}-${confirmationCode}@evioshq`;
 }
 
 /**
@@ -90,10 +90,10 @@ export function generateIcsContent(bookingData: ConfirmationPageData): string {
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//SME Booking App//EN',
+    'PRODID:-//Evios HQ//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:SME Service Booking',
+    'X-WR-CALNAME:Evios HQ Booking',
     'X-WR-TIMEZONE:UTC',
     'X-WR-CALDESC:Service booking confirmation',
     '',

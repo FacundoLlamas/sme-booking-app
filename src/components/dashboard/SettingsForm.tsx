@@ -27,8 +27,8 @@ interface SettingsFormProps {
  */
 export function SettingsForm({ onSave }: SettingsFormProps) {
   const [formData, setFormData] = useState<SettingsData>({
-    businessName: 'BookPro Services',
-    businessEmail: 'john@bookpro.com',
+    businessName: 'Evios HQ Demo',
+    businessEmail: 'contact@evioshq.com',
     timezone: 'America/New_York',
     maxConcurrentBookings: 5,
     services: ['plumbing', 'electrical', 'hvac'],

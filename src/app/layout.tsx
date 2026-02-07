@@ -3,8 +3,8 @@ import './globals.css';
 import ChatWrapper from '@/components/chat/ChatWrapper';
 
 export const metadata: Metadata = {
-  title: 'Evios HQ - Service Booking',
-  description: 'AI-powered appointment scheduling for expert services by Evios HQ',
+  title: 'Evios HQ Demo',
+  description: 'AI-powered appointment scheduling demo by Evios HQ',
   viewport: 'width=device-width, initial-scale=1',
 };
 
