@@ -144,13 +144,14 @@ export async function POST(request: NextRequest) {
         outputTokens: llmResponse.tokens.output,
       });
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error('[CHAT API] LLM response failed', {
         correlationId,
-        error: String(error),
+        error: errorMsg,
       });
 
-      // Fallback response
-      aiResponse = "Welcome to Evios HQ! I can help you with plumbing, electrical, HVAC, general maintenance, and landscaping services. How can I assist you today? To book a service, click \"Book a Service\" in the navigation.";
+      // Fallback response with error info for debugging
+      aiResponse = `Welcome to Evios HQ! I can help you with plumbing, electrical, HVAC, general maintenance, and landscaping services. How can I assist you today? [Debug: ${errorMsg}]`;
     }
 
     // Save assistant message to database

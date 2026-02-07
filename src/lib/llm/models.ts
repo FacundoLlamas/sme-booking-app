@@ -9,9 +9,9 @@
  */
 
 export enum ClaudeModel {
-  OPUS_4_5 = 'claude-sonnet-4-5-20250514',
-  SONNET_4_5 = 'claude-sonnet-4-5-20250514',
-  HAIKU_4_5 = 'claude-haiku-4-5-20250514',
+  OPUS_4_5 = 'claude-sonnet-4-5-20250929',
+  SONNET_4_5 = 'claude-sonnet-4-5-20250929',
+  HAIKU_4_5 = 'claude-haiku-4-5-20251001',
 }
 
 /**
