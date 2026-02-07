@@ -72,7 +72,7 @@ Esc - Close dialogs`);
         {/* Menu button (mobile) */}
         <button
           onClick={onMenuClick}
-          className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+          className="md:hidden p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
           aria-label="Toggle sidebar"
         >
           <Menu className="w-5 h-5" />
@@ -91,7 +91,7 @@ Esc - Close dialogs`);
           <input
             type="text"
             placeholder="Search bookings, customers..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400 dark:placeholder-slate-500"
+            className="flex-1 bg-transparent text-sm text-slate-900 dark:text-slate-100 outline-none placeholder-slate-400 dark:placeholder-slate-500"
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
           />
@@ -103,7 +103,7 @@ Esc - Close dialogs`);
       </div>
 
       {/* Right side: Theme toggle, notifications, help, user menu */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
         {/* Theme toggle */}
         <button
           onClick={onToggleDarkMode}
@@ -179,13 +179,13 @@ Esc - Close dialogs`);
               <div className="p-2 space-y-1">
                 <a
                   href="#"
-                  className="block px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                  className="block px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
                 >
                   Profile
                 </a>
                 <a
                   href="#"
-                  className="block px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                  className="block px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
                 >
                   Settings
                 </a>
