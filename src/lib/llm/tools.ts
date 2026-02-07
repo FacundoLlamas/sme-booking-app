@@ -12,6 +12,8 @@ import {
 import { checkBookingConflict } from '@/lib/bookings/conflict-checker';
 import { createEvent } from '@/lib/google/calendar-client';
 import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/send';
+import { confirmationEmail } from '@/lib/email/templates';
 
 /**
  * Tool definitions for Claude's tool_use feature
@@ -300,6 +302,28 @@ async function executeCreateBooking(
     } catch (calendarErr) {
       logger.warn('[TOOL] Calendar event creation failed (non-blocking)', {
         error: String(calendarErr),
+      });
+    }
+
+    // Send confirmation email (non-blocking)
+    try {
+      const emailHtml = confirmationEmail(
+        validated.customer_name,
+        confirmationCode,
+        bookingTime.toLocaleDateString(),
+        bookingTime.toLocaleTimeString(),
+        process.env.BUSINESS_PHONE || '1-800-EVIOS',
+        validated.service_type
+      );
+      await sendEmail(
+        validated.email,
+        `Booking Confirmed - Code: ${confirmationCode}`,
+        emailHtml
+      );
+      logger.info('[TOOL] Confirmation email sent', { email: validated.email });
+    } catch (emailErr) {
+      logger.warn('[TOOL] Email send failed (non-blocking)', {
+        error: String(emailErr),
       });
     }
 

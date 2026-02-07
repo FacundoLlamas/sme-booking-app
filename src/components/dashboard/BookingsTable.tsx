@@ -1,91 +1,61 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { List } from 'react-window';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Eye, MoreVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { MoreVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Booking {
   id: number;
   customerName: string;
   service: string;
-  dateTime: Date;
-  status: 'confirmed' | 'pending' | 'completed' | 'cancelled';
-  duration: number;
+  dateTime: string;
+  status: string;
+  confirmationCode: string | null;
 }
 
 interface BookingsTableProps {
   filters?: any;
 }
 
-/**
- * Virtualized bookings table component
- * Uses react-window for performance with large datasets
- * Features: sorting, filtering, pagination, actions
- *
- * @param filters - Filter configuration
- */
 export function BookingsTable({ filters }: BookingsTableProps) {
-  // Sample bookings data - in real app, would come from API
-  const allBookings: Booking[] = [
-    {
-      id: 1,
-      customerName: 'John Smith',
-      service: 'Plumbing Repair',
-      dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      status: 'confirmed',
-      duration: 60,
-    },
-    {
-      id: 2,
-      customerName: 'Sarah Johnson',
-      service: 'Electrical Inspection',
-      dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      status: 'pending',
-      duration: 90,
-    },
-    {
-      id: 3,
-      customerName: 'Mike Davis',
-      service: 'HVAC Maintenance',
-      dateTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      status: 'confirmed',
-      duration: 120,
-    },
-    {
-      id: 4,
-      customerName: 'Emma Wilson',
-      service: 'Plumbing Repair',
-      dateTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: 'pending',
-      duration: 60,
-    },
-    {
-      id: 5,
-      customerName: 'Robert Brown',
-      service: 'Electrical Repair',
-      dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      status: 'completed',
-      duration: 75,
-    },
-    // Add more mock data for testing virtualization
-    ...Array.from({ length: 45 }, (_, i) => ({
-      id: 6 + i,
-      customerName: `Customer ${6 + i}`,
-      service: ['Plumbing', 'Electrical', 'HVAC'][i % 3],
-      dateTime: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000),
-      status: ['confirmed', 'pending', 'completed', 'cancelled'][i % 4] as any,
-      duration: Math.floor(Math.random() * 120) + 30,
-    })),
-  ];
-
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'customerName' | 'dateTime' | 'status'>('dateTime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 25;
 
-  // Handle sorting
+  const fetchBookings = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set('limit', String(itemsPerPage));
+    params.set('page', String(currentPage));
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.search) params.set('search', filters.search);
+
+    fetch(`/api/v1/bookings?${params}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          setBookings(json.data.bookings);
+          setTotal(json.data.total);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [currentPage, filters?.status, filters?.search]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filters?.status, filters?.search]);
+
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -95,51 +65,30 @@ export function BookingsTable({ filters }: BookingsTableProps) {
     }
   };
 
-  // Filtered and sorted bookings
-  const processedBookings = useMemo(() => {
-    let result = allBookings;
-
-    // Apply filters
-    if (filters?.search) {
-      result = result.filter((b) =>
-        b.customerName.toLowerCase().includes(filters.search.toLowerCase())
-      );
-    }
-    if (filters?.status) {
-      result = result.filter((b) => b.status === filters.status);
-    }
-    if (filters?.serviceType) {
-      result = result.filter((b) =>
-        b.service.toLowerCase().includes(filters.serviceType.toLowerCase())
-      );
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
+  // Client-side sort on current page
+  const sortedBookings = useMemo(() => {
+    const sorted = [...bookings];
+    sorted.sort((a, b) => {
       let compareValue = 0;
-
       switch (sortBy) {
         case 'customerName':
           compareValue = a.customerName.localeCompare(b.customerName);
           break;
         case 'dateTime':
-          compareValue = a.dateTime.getTime() - b.dateTime.getTime();
+          compareValue = new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
           break;
         case 'status':
           compareValue = a.status.localeCompare(b.status);
           break;
       }
-
       return sortOrder === 'asc' ? compareValue : -compareValue;
     });
+    return sorted;
+  }, [bookings, sortBy, sortOrder]);
 
-    return result;
-  }, [allBookings, filters, sortBy, sortOrder]);
-
-  // Paginate bookings
+  const totalPages = Math.max(1, Math.ceil(total / itemsPerPage));
   const startIndex = currentPage * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedBookings = processedBookings.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, total);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -182,7 +131,6 @@ export function BookingsTable({ filters }: BookingsTableProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Table header and data */}
       <div className="overflow-x-auto flex-1">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -205,45 +153,59 @@ export function BookingsTable({ filters }: BookingsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {paginatedBookings.map((booking) => (
-              <tr
-                key={booking.id}
-                className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-              >
-                <td className="px-6 py-3 text-slate-900 dark:text-white font-medium">
-                  {booking.customerName}
-                </td>
-                <td className="px-6 py-3 text-slate-600 dark:text-slate-400">
-                  {booking.service}
-                </td>
-                <td className="px-6 py-3 text-slate-600 dark:text-slate-400">
-                  {format(booking.dateTime, 'MMM d, yyyy')}
-                  <br />
-                  <span className="text-xs">
-                    {format(booking.dateTime, 'p')}
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <span
-                    className={cn(
-                      'px-2 py-1 rounded text-xs font-medium',
-                      getStatusColor(booking.status)
-                    )}
-                  >
-                    {booking.status.charAt(0).toUpperCase() +
-                      booking.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <button
-                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded"
-                    aria-label="More options"
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : sortedBookings.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                  No bookings found
+                </td>
+              </tr>
+            ) : (
+              sortedBookings.map((booking) => (
+                <tr
+                  key={booking.id}
+                  className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  <td className="px-6 py-3 text-slate-900 dark:text-white font-medium">
+                    {booking.customerName}
+                  </td>
+                  <td className="px-6 py-3 text-slate-600 dark:text-slate-400">
+                    {booking.service}
+                  </td>
+                  <td className="px-6 py-3 text-slate-600 dark:text-slate-400">
+                    {format(new Date(booking.dateTime), 'MMM d, yyyy')}
+                    <br />
+                    <span className="text-xs">
+                      {format(new Date(booking.dateTime), 'p')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3">
+                    <span
+                      className={cn(
+                        'px-2 py-1 rounded text-xs font-medium',
+                        getStatusColor(booking.status)
+                      )}
+                    >
+                      {booking.status.charAt(0).toUpperCase() +
+                        booking.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3">
+                    <button
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded"
+                      aria-label="More options"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -251,8 +213,9 @@ export function BookingsTable({ filters }: BookingsTableProps) {
       {/* Pagination */}
       <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Showing {startIndex + 1} to {Math.min(endIndex, processedBookings.length)} of{' '}
-          {processedBookings.length} bookings
+          {total > 0
+            ? `Showing ${startIndex + 1} to ${endIndex} of ${total} bookings`
+            : 'No bookings'}
         </p>
         <div className="flex gap-2">
           <button
@@ -263,19 +226,11 @@ export function BookingsTable({ filters }: BookingsTableProps) {
             Previous
           </button>
           <span className="px-3 py-1 text-sm text-slate-600 dark:text-slate-400">
-            Page {currentPage + 1} of{' '}
-            {Math.ceil(processedBookings.length / itemsPerPage)}
+            Page {currentPage + 1} of {totalPages}
           </span>
           <button
-            onClick={() =>
-              setCurrentPage(
-                Math.min(
-                  Math.ceil(processedBookings.length / itemsPerPage) - 1,
-                  currentPage + 1
-                )
-              )
-            }
-            disabled={endIndex >= processedBookings.length}
+            onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+            disabled={currentPage >= totalPages - 1}
             className="px-3 py-1 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next

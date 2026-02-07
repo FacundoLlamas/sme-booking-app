@@ -1,45 +1,33 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from './Card';
 import { format } from 'date-fns';
-import { Eye, MoreVertical } from 'lucide-react';
+import { Eye } from 'lucide-react';
 
-/**
- * Recent bookings component
- * Displays table of recently created bookings
- */
+interface BookingData {
+  id: number;
+  customerName: string;
+  service: string;
+  dateTime: string;
+  status: string;
+}
+
 export function RecentBookings() {
-  const bookings = [
-    {
-      id: 1,
-      customerName: 'John Smith',
-      service: 'Plumbing Repair',
-      dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      status: 'confirmed',
-    },
-    {
-      id: 2,
-      customerName: 'Sarah Johnson',
-      service: 'Electrical Inspection',
-      dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      status: 'pending',
-    },
-    {
-      id: 3,
-      customerName: 'Mike Davis',
-      service: 'HVAC Maintenance',
-      dateTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      status: 'confirmed',
-    },
-    {
-      id: 4,
-      customerName: 'Emma Wilson',
-      service: 'Plumbing Repair',
-      dateTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: 'pending',
-    },
-  ];
+  const [bookings, setBookings] = useState<BookingData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/v1/bookings?limit=5')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          setBookings(json.data.bookings);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -92,44 +80,58 @@ export function RecentBookings() {
             </tr>
           </thead>
           <tbody>
-            {bookings.map((booking) => (
-              <tr
-                key={booking.id}
-                className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-              >
-                <td className="px-4 py-3 text-slate-900 dark:text-white font-medium">
-                  {booking.customerName}
-                </td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                  {booking.service}
-                </td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                  {format(booking.dateTime, 'MMM d, yyyy')}
-                  <br />
-                  <span className="text-xs">
-                    {format(booking.dateTime, 'p')}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-                      booking.status
-                    )}`}
-                  >
-                    {booking.status.charAt(0).toUpperCase() +
-                      booking.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded"
-                    aria-label="View details"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : bookings.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                  No bookings yet
+                </td>
+              </tr>
+            ) : (
+              bookings.map((booking) => (
+                <tr
+                  key={booking.id}
+                  className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  <td className="px-4 py-3 text-slate-900 dark:text-white font-medium">
+                    {booking.customerName}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                    {booking.service}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                    {format(new Date(booking.dateTime), 'MMM d, yyyy')}
+                    <br />
+                    <span className="text-xs">
+                      {format(new Date(booking.dateTime), 'p')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+                        booking.status
+                      )}`}
+                    >
+                      {booking.status.charAt(0).toUpperCase() +
+                        booking.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded"
+                      aria-label="View details"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

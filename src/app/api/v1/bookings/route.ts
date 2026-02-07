@@ -62,6 +62,67 @@ function generateConfirmationCode(): string {
 }
 
 /**
+ * GET /api/v1/bookings
+ * List bookings with pagination, filtering, and search
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 100);
+    const page = Math.max(parseInt(searchParams.get('page') || '0', 10), 0);
+    const status = searchParams.get('status');
+    const search = searchParams.get('search');
+    const upcoming = searchParams.get('upcoming') === 'true';
+
+    const where: any = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.customer = {
+        name: { contains: search, mode: 'insensitive' },
+      };
+    }
+
+    if (upcoming) {
+      where.bookingTime = { gte: new Date() };
+    }
+
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({
+        where,
+        include: { customer: true },
+        orderBy: upcoming
+          ? { bookingTime: 'asc' }
+          : { createdAt: 'desc' },
+        skip: page * limit,
+        take: limit,
+      }),
+      prisma.booking.count({ where }),
+    ]);
+
+    const data = bookings.map((b) => ({
+      id: b.id,
+      customerName: b.customer.name,
+      email: b.customer.email,
+      phone: b.customer.phone,
+      service: b.serviceType || 'general',
+      dateTime: b.bookingTime.toISOString(),
+      status: b.status,
+      confirmationCode: b.confirmationCode,
+      notes: b.notes,
+    }));
+
+    return apiSuccess({ bookings: data, total, page, limit });
+  } catch (error) {
+    logger.error('[BOOKINGS GET] Error', { error: String(error) });
+    return apiError('INTERNAL_ERROR', 'Failed to fetch bookings', 500);
+  }
+}
+
+/**
  * POST /api/v1/bookings
  * Create a new booking with atomic transaction and conflict detection
  */
@@ -309,7 +370,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, x-correlation-id',
     },
   });

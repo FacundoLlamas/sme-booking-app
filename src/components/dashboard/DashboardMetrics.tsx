@@ -1,45 +1,59 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from './Card';
 import {
   TrendingUp,
   Users,
   Calendar,
-  DollarSign,
+  Clock,
 } from 'lucide-react';
 
-/**
- * Dashboard key metrics component
- * Displays summary cards with key business metrics
- */
+interface StatsData {
+  totalBookings: number;
+  activeCustomers: number;
+  completionRate: number;
+  pendingBookings: number;
+}
+
 export function DashboardMetrics() {
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/v1/dashboard/stats')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          setStats(json.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   const metrics = [
     {
       label: 'Total Bookings',
-      value: '156',
-      change: '+12% from last month',
+      value: loading ? '...' : String(stats?.totalBookings ?? 0),
       icon: Calendar,
       color: 'sky',
     },
     {
       label: 'Active Customers',
-      value: '43',
-      change: '+5 this week',
+      value: loading ? '...' : String(stats?.activeCustomers ?? 0),
       icon: Users,
       color: 'green',
     },
     {
-      label: 'Revenue (30 days)',
-      value: '$4,280',
-      change: '+22% from last period',
-      icon: DollarSign,
+      label: 'Pending Bookings',
+      value: loading ? '...' : String(stats?.pendingBookings ?? 0),
+      icon: Clock,
       color: 'amber',
     },
     {
       label: 'Completion Rate',
-      value: '94%',
-      change: '+3% improvement',
+      value: loading ? '...' : `${stats?.completionRate ?? 0}%`,
       icon: TrendingUp,
       color: 'emerald',
     },
@@ -72,9 +86,6 @@ export function DashboardMetrics() {
                 </p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
                   {metric.value}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
-                  {metric.change}
                 </p>
               </div>
               <div className={`p-3 rounded-lg ${bgColorClass}`}>
