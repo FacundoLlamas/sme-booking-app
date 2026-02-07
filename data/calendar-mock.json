@@ -1,0 +1,66 @@
+{
+  "availability": [
+    {
+      "date": "2026-02-10",
+      "slots": [
+        {
+          "start_time": "2026-02-10T09:00:00.000Z",
+          "end_time": "2026-02-10T10:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_3",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T10:00:00.000Z",
+          "end_time": "2026-02-10T11:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_3",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T11:00:00.000Z",
+          "end_time": "2026-02-10T12:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_2",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T12:00:00.000Z",
+          "end_time": "2026-02-10T13:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_3",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T13:00:00.000Z",
+          "end_time": "2026-02-10T14:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_2",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T14:00:00.000Z",
+          "end_time": "2026-02-10T15:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_2",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T15:00:00.000Z",
+          "end_time": "2026-02-10T16:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_3",
+          "available": true
+        },
+        {
+          "start_time": "2026-02-10T16:00:00.000Z",
+          "end_time": "2026-02-10T17:00:00.000Z",
+          "duration_minutes": 60,
+          "technician_id": "tech_2",
+          "available": true
+        }
+      ]
+    }
+  ],
+  "last_updated": "2026-02-07T12:54:04.877Z"
+}

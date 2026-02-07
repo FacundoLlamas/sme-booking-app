@@ -1,0 +1,92 @@
+version: '3.8'
+
+# Docker Compose overrides for STAGING environment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    environment:
+      - NODE_ENV=staging
+      - DATABASE_URL=${DATABASE_URL_STAGING:-postgresql://user:pass@postgres:5432/sme_booking}
+      - DATABASE_MOCK=false
+      - GOOGLE_CALENDAR_MOCK=false
+      - TWILIO_MOCK=false
+      - SENDGRID_MOCK=false
+      - ANTHROPIC_MOCK=false
+      - APP_URL=https://staging.example.com
+      - NEXTAUTH_URL=https://staging.example.com
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET_STAGING}
+      - REDIS_URL=redis://redis:6379/1
+      - LOG_LEVEL=debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1024M
+        reservations:
+          cpus: '1'
+          memory: 512M
+      replicas: 1
+
+  postgres:
+    environment:
+      POSTGRES_USER: ${DB_USER_STAGING:-staging_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD_STAGING}
+      POSTGRES_DB: ${DB_NAME_STAGING:-sme_booking_staging}
+    volumes:
+      - postgres-staging:/var/lib/postgresql/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1024M
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  redis:
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync always
+      --maxmemory 512mb
+      --maxmemory-policy volatile-lru
+      --requirepass ${REDIS_PASSWORD_STAGING}
+    restart: always
+
+  nginx:
+    environment:
+      - CERT_PATH=/etc/nginx/ssl/staging
+      - SERVER_NAME=staging.example.com
+    volumes:
+      - ./nginx/staging.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl/staging:/etc/nginx/ssl/staging:ro
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+
+volumes:
+  postgres-staging:
+    driver: local

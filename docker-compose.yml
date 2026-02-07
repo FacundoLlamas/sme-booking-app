@@ -1,0 +1,209 @@
+version: '3.8'
+
+# Docker Compose for SME Booking App
+# Usage:
+#   Development: docker-compose up
+#   Production: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+#   Staging: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+
+services:
+  # Main application service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: sme-booking-app
+    hostname: app
+    ports:
+      - "3000:3000"
+    volumes:
+      # Code volume for hot-reload in development
+      - .:/app
+      # Don't sync node_modules to avoid conflicts
+      - /app/node_modules
+      # Don't sync .next to avoid build conflicts
+      - /app/.next
+      # Database volume for persistence
+      - ./db:/app/db
+    environment:
+      # Application
+      - NODE_ENV=development
+      - APP_URL=http://localhost:3000
+      - APP_PORT=3000
+      
+      # Database
+      - DATABASE_URL=file:./db/sqlite.db
+      - DATABASE_MOCK=true
+      
+      # External services (all mocked in development)
+      - GOOGLE_CALENDAR_MOCK=true
+      - TWILIO_MOCK=true
+      - SENDGRID_MOCK=true
+      - ANTHROPIC_MOCK=true
+      
+      # Redis cache
+      - REDIS_URL=redis://redis:6379/0
+      - CACHE_TTL_SECONDS=3600
+      
+      # Timezone
+      - EXPERT_TIMEZONE=America/New_York
+      - CUSTOMER_TIMEZONE=America/Los_Angeles
+      
+      # Authentication (CHANGE IN PRODUCTION!)
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=dev-secret-key-change-in-production
+      - NEXTAUTH_CALLBACK_URL=http://localhost:3000/api/auth/callback
+      
+      # Logging
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      
+      # Feature flags
+      - ENABLE_METRICS=true
+      - ENABLE_REQUEST_TRACING=true
+      - ENABLE_RESPONSE_COMPRESSION=true
+    
+    depends_on:
+      redis:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Redis service (for caching & job queue)
+  redis:
+    image: redis:7-alpine
+    container_name: sme-booking-redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # PostgreSQL (optional - for staging/production)
+  # To use PostgreSQL, uncomment this section and update DATABASE_URL
+  # Staging configuration: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+  postgres:
+    image: postgres:16-alpine
+    container_name: sme-booking-postgres
+    hostname: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-booking_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-booking_pass}
+      POSTGRES_DB: ${DB_NAME:-sme_booking}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Initialize with schema if needed
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-booking_user} -d ${DB_NAME:-sme_booking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - postgres
+      - production
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Nginx reverse proxy (for staging/production)
+  # Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+  nginx:
+    image: nginx:alpine
+    container_name: sme-booking-nginx
+    hostname: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - production
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "email_1770468844524_0eef1cf182731990",
+    "to": "john.doe@example.com",
+    "subject": "Booking Confirmation - BK12345",
+    "body_preview": "Your booking is confirmed for February 10, 2026 at 10:00 AM",
+    "timestamp": "2026-02-07T12:54:04.524Z",
+    "status": "sent",
+    "hasHtml": true,
+    "hasText": true
+  },
+  {
+    "id": "email_1770468844660_d4ffe92c15365c12",
+    "to": "jane.smith@example.com",
+    "subject": "Reminder: Appointment Tomorrow",
+    "body_preview": "SME Services body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica N...",
+    "timestamp": "2026-02-07T12:54:04.660Z",
+    "status": "sent",
+    "hasHtml": true,
+    "hasText": false
+  }
+]

@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+build
+out
+coverage
+.turbo
+*.config.js
+next-env.d.ts
+public
+.github
+*.db
+db/migrations
+prisma/migrations
+.dockerignore
+Dockerfile
+docker-compose.yml

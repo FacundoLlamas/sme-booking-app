@@ -1,0 +1,16 @@
+[
+  {
+    "id": "sms_1770468844329_607e101f585413a1",
+    "to": "+14155551234",
+    "message": "Your booking is confirmed! \nBooking Code: BK12345\nDate: 2026-02-10 at 10:00 AM\nBusiness: SME Services\n\nReply CANCEL to cancel your appointment.",
+    "timestamp": "2026-02-07T12:54:04.329Z",
+    "status": "sent"
+  },
+  {
+    "id": "sms_1770468844438_b629050b82f6eec9",
+    "to": "+14155555678",
+    "message": "Reminder: Your appointment is tomorrow!\nDate: 2026-02-10 at 10:00 AM\nBusiness: SME Services\nQuestions? Call +18005551234\n\nSee you soon!",
+    "timestamp": "2026-02-07T12:54:04.438Z",
+    "status": "sent"
+  }
+]

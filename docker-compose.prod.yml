@@ -1,0 +1,145 @@
+version: '3.8'
+
+# Docker Compose overrides for PRODUCTION environment
+# ⚠️  SECURITY: This configuration is for reference only
+# ⚠️  Actual production deployment should use Vercel, AWS, or GCP with managed services
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      cache_from:
+        - ghcr.io/your-org/sme-booking-app:main-latest
+      cache_to:
+        - type=registry,ref=ghcr.io/your-org/sme-booking-app:buildcache
+    image: ghcr.io/your-org/sme-booking-app:${VERSION:-latest}
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL_PROD}
+      - DATABASE_MOCK=false
+      - GOOGLE_CALENDAR_MOCK=false
+      - TWILIO_MOCK=false
+      - SENDGRID_MOCK=false
+      - ANTHROPIC_MOCK=false
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY_PROD}
+      - APP_URL=https://booking.example.com
+      - NEXTAUTH_URL=https://booking.example.com
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET_PROD}
+      - NEXTAUTH_CALLBACK_URL=https://booking.example.com/api/auth/callback
+      - REDIS_URL=redis://:${REDIS_PASSWORD_PROD}@redis:6379/0
+      - LOG_LEVEL=warn
+      - ENABLE_METRICS=true
+      - ENABLE_REQUEST_TRACING=true
+      - SENTRY_DSN=${SENTRY_DSN_PROD}
+    ports:
+      - "3000:3000"
+    volumes:
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 2048M
+        reservations:
+          cpus: '2'
+          memory: 1024M
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER_PROD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD_PROD}
+      POSTGRES_DB: ${DB_NAME_PROD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-prod:/var/lib/postgresql/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2048M
+        reservations:
+          cpus: '1'
+          memory: 1024M
+      replicas: 1
+
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync always
+      --maxmemory 1gb
+      --maxmemory-policy volatile-lru
+      --requirepass ${REDIS_PASSWORD_PROD}
+      --timeout 300
+      --tcp-backlog 511
+      --tcp-keepalive 300
+    volumes:
+      - redis-prod:/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  nginx:
+    image: nginx:alpine
+    environment:
+      - CERT_PATH=/etc/nginx/ssl/prod
+      - SERVER_NAME=booking.example.com
+    volumes:
+      - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl/prod:/etc/nginx/ssl/prod:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+        reservations:
+          cpus: '1'
+          memory: 256M
+      replicas: 2
+
+volumes:
+  postgres-prod:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_SERVER_IP},vers=4,soft,timeo=180,bg,tcp,rw
+      device: ":${NFS_POSTGRES_PATH}"
+  redis-prod:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_SERVER_IP},vers=4,soft,timeo=180,bg,tcp,rw
+      device: ":${NFS_REDIS_PATH}"
